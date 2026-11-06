@@ -117,10 +117,10 @@ export interface Aluno {
   telefone: string | null;
   celular: string | null;
   telefone_contato: string | null;
-  endereco?: Record<string, string | null> | null;
-  responsavel?: Record<string, string | null> | null;
-  pai?: Record<string, string | null> | null;
-  mae?: Record<string, string | null> | null;
+  endereco?: Endereco | null;
+  responsavel?: Responsavel | null;
+  pai?: Parente | null;
+  mae?: Parente | null;
 }
 
 export interface FinRecord {
@@ -140,3 +140,8 @@ export interface FinRecord {
   banco_caixa: string | null;
   hora: string | null;
 }
+
+type N = string | null | undefined;
+export interface Endereco { tipo_logradouro?: N; logradouro?: N; numero?: N; complemento?: N; bairro?: N; cep?: N; cidade?: N; estado?: N }
+export interface Responsavel { nome?: N; tipo?: N; parentesco?: N; telefone?: N; celular?: N; zap?: N; email?: N; sexo?: N; cidade?: N; estado?: N }
+export interface Parente { nome?: N; telefone?: N; email?: N }
