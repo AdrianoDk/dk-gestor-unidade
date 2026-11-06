@@ -58,6 +58,19 @@ export async function fetchFinance(token: string, kind: "contas-recebidas" | "co
   return all;
 }
 
+/** Uses the API's event dates and totals, not the student's current status or registration date. */
+export async function fetchAcademicTotal(token: string, kind: "matriculas" | "cancelamentos", start: string, end: string) {
+  let total = 0;
+  for (const [a, b] of splitRange(start, end)) {
+    const r = await dk<{ total_matriculas?: number; total_cancelamentos?: number }>(token, `/api/v1/${kind}/periodo`, {
+      data_inicial: a,
+      data_final: b,
+    });
+    total += (kind === "matriculas" ? r.total_matriculas : r.total_cancelamentos) ?? 0;
+  }
+  return total;
+}
+
 export async function fetchAllAlunos(token: string, start = "2000-01-01", end = format(new Date(), "yyyy-MM-dd")) {
   const all: Aluno[] = [];
   let offset = 0;
@@ -88,7 +101,8 @@ export const situacaoLabel = (s: string | null | undefined) =>
   ({ A: "Ativo", I: "Inativo", C: "Cancelado", T: "Trancado", F: "Formado", P: "Pendente" } as Record<string, string>)[s ?? ""] ??
   (s || "—");
 
-export const isCancel = (s: string | null | undefined) => s === "C";
+/** Course status only: a cancelled course is inactive, independently of student status. */
+export const isCancel = (s: string | null | undefined) => s === "I";
 
 export const phone = (p: string | null | undefined) => {
   if (!p) return "—";
