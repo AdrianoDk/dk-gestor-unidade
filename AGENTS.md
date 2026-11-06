@@ -28,3 +28,6 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- DKSOFT API calls go through the `dkFetch` server function (src/lib/dk-api.ts) with the unit token sent in the body; avoids browser CORS and keeps the token out of URLs.
+- Period queries are split into 31-day chunks (`splitRange`) because the API rejects longer ranges.
