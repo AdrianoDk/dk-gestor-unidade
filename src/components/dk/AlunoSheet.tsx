@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { brl, cpfFmt, dateBR, dkOrNull, phone, situacaoLabel, type Aluno } from "@/lib/dk-client";
+import { brl, cpfFmt, dateBR, dkOrNull, isCancel, phone, situacaoLabel, type Aluno } from "@/lib/dk-client";
 import { Empty, ErrorBox, Loading } from "./shared";
 
 function Field({ label, value }: { label: string; value: ReactNode }) {
@@ -114,7 +114,7 @@ export function AlunoSheet({ token, aluno, onClose }: { token: string; aluno: Al
                         <li key={c.id_aluno_curso} className="rounded-xl border p-3">
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-medium">{c.pacote}</p>
-                            <Badge variant={c.situacao === "A" ? "default" : "secondary"}>{situacaoLabel(c.situacao)}</Badge>
+                            <Badge variant={c.situacao === "A" ? "default" : "secondary"}>{isCancel(c.situacao) ? "Inativo (cancelado)" : situacaoLabel(c.situacao)}</Badge>
                           </div>
                           <p className="text-xs text-muted-foreground">Contrato {c.contrato ?? "—"} · Matrícula em {dateBR(c.data_matricula)}</p>
                         </li>
