@@ -19,7 +19,7 @@ describe("course cancellations", () => {
       .mockResolvedValueOnce({ ok: true, status: 200, body: { total_cancelamentos: 2 } })
       .mockResolvedValueOnce({ ok: true, status: 200, body: { total_cancelamentos: 3 } });
     expect(await fetchAcademicTotal("test-token", "cancelamentos", "2026-10-01", "2026-11-01")).toBe(5);
-    expect(vi.mocked(dkFetch).mock.calls.map(([input]) => input.data)).toEqual([
+    expect(vi.mocked(dkFetch).mock.calls.map(([input]) => input?.data)).toEqual([
       { token: "test-token", path: "/api/v1/cancelamentos/periodo", params: { data_inicial: "2026-10-01", data_final: "2026-10-31" } },
       { token: "test-token", path: "/api/v1/cancelamentos/periodo", params: { data_inicial: "2026-11-01", data_final: "2026-11-01" } },
     ]);
