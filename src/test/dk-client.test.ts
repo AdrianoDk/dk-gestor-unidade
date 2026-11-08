@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchAcademicTotal, isCancel, splitRange } from "@/lib/dk-client";
+import { fetchAcademicTotal, fetchFinance, isCancel } from "@/lib/dk-client";
+import { defaultRange, PERIOD_LIMIT_MESSAGE, rangeError } from "@/lib/dk-range";
 import { dkFetch } from "@/lib/dk-api";
 
 vi.mock("@/lib/dk-api", () => ({ dkFetch: vi.fn() }));
@@ -14,14 +15,11 @@ describe("course cancellations", () => {
     expect(isCancel(null)).toBe(false);
   });
 
-  it("uses cancellation event totals across inclusive chunks of at most 31 days", async () => {
-    vi.mocked(dkFetch)
-      .mockResolvedValueOnce({ ok: true, status: 200, body: { total_cancelamentos: 2 } })
-      .mockResolvedValueOnce({ ok: true, status: 200, body: { total_cancelamentos: 3 } });
-    expect(await fetchAcademicTotal("test-token", "cancelamentos", "2026-10-01", "2026-11-01")).toBe(5);
+  it("uses cancellation event totals for a 31-day inclusive period", async () => {
+    vi.mocked(dkFetch).mockResolvedValueOnce({ ok: true, status: 200, body: { total_cancelamentos: 2 } });
+    expect(await fetchAcademicTotal("test-token", "cancelamentos", "2026-10-01", "2026-10-31")).toBe(2);
     expect(vi.mocked(dkFetch).mock.calls.map(([input]) => input?.data)).toEqual([
       { token: "test-token", path: "/api/v1/cancelamentos/periodo", params: { data_inicial: "2026-10-01", data_final: "2026-10-31" } },
-      { token: "test-token", path: "/api/v1/cancelamentos/periodo", params: { data_inicial: "2026-11-01", data_final: "2026-11-01" } },
     ]);
   });
 
@@ -32,14 +30,32 @@ describe("course cancellations", () => {
   });
 });
 
-describe("splitRange (API limit of 31 days)", () => {
-  it("keeps a 31-day range as one chunk", () => {
-    expect(splitRange("2026-10-01", "2026-10-31")).toEqual([["2026-10-01", "2026-10-31"]]);
+describe("date selection", () => {
+  it("defaults to today only", () => {
+    expect(defaultRange(new Date(2026, 10, 8, 13, 55))).toEqual({ start: "2026-11-08", end: "2026-11-08" });
   });
-  it("splits a 32-day range in two", () => {
-    expect(splitRange("2026-10-01", "2026-11-01")).toEqual([
-      ["2026-10-01", "2026-10-31"],
-      ["2026-11-01", "2026-11-01"],
-    ]);
+  it("accepts 31 days including both endpoints", () => {
+    expect(rangeError({ start: "2026-10-01", end: "2026-10-31" })).toBeNull();
+    expect(rangeError({ start: "2026-11-08", end: "2026-11-08" })).toBeNull();
+  });
+  it("rejects 32 days including both endpoints", () => {
+    expect(rangeError({ start: "2026-10-01", end: "2026-11-01" })).toBe(PERIOD_LIMIT_MESSAGE);
+  });
+  it.each(["matriculas", "cancelamentos"] as const)("blocks oversized %s queries without API calls", async (kind) => {
+    await expect(fetchAcademicTotal("test-token", kind, "2026-10-01", "2026-11-01")).rejects.toThrow(PERIOD_LIMIT_MESSAGE);
+    expect(dkFetch).not.toHaveBeenCalled();
+  });
+  it.each(["contas-recebidas", "contas-pagas"] as const)("blocks oversized %s queries without API calls", async (kind) => {
+    await expect(fetchFinance("test-token", kind, "2026-10-01", "2026-11-01")).rejects.toThrow(PERIOD_LIMIT_MESSAGE);
+    expect(dkFetch).not.toHaveBeenCalled();
+  });
+  it("sends the selected valid financial period unchanged", async () => {
+    vi.mocked(dkFetch).mockResolvedValue({ ok: true, status: 200, body: { registros: [] } });
+    expect(await fetchFinance("test-token", "contas-recebidas", "2026-10-01", "2026-10-31")).toEqual([]);
+    expect(dkFetch).toHaveBeenCalledExactlyOnceWith({ data: { token: "test-token", path: "/api/v1/financeiro/contas-recebidas", params: { data_inicial: "2026-10-01", data_final: "2026-10-31" } } });
+  });
+  it("rejects missing or reversed dates", () => {
+    expect(rangeError({ start: "", end: "2026-11-08" })).not.toBeNull();
+    expect(rangeError({ start: "2026-11-09", end: "2026-11-08" })).not.toBeNull();
   });
 });

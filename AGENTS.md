@@ -30,5 +30,5 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - DKSOFT API calls go through the `dkFetch` server function (src/lib/dk-api.ts) with the unit token sent in the body; avoids browser CORS and keeps the token out of URLs.
-- Period queries are split into 31-day chunks (`splitRange`) because the API rejects longer ranges.
+- Date filters and period API calls share validation in `src/lib/dk-range.ts`; reject invalid selections before sending requests instead of silently splitting them, so the UI and API enforce the same limit.
 - Academic dashboard totals use the documented enrollment and cancellation period endpoints, not student registration dates or current student statuses, so counts reflect course events in the selected period.

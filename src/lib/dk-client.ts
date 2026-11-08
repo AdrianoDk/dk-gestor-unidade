@@ -1,5 +1,6 @@
-import { addDays, differenceInCalendarDays, format, min as minDate, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { dkFetch } from "./dk-api";
+import { rangeError } from "./dk-range";
 
 export const TOKEN_KEY = "dk-gestor-token";
 
@@ -35,40 +36,25 @@ export async function dkOrNull<T = any>(token: string, path: string): Promise<T 
   }
 }
 
-/** Splits an inclusive date range into chunks of at most 31 days (API limit). */
-export function splitRange(start: string, end: string, maxDays = 31): [string, string][] {
-  const out: [string, string][] = [];
-  let cur = parseISO(start);
-  const last = parseISO(end);
-  if (differenceInCalendarDays(last, cur) < 0) return out;
-  while (differenceInCalendarDays(last, cur) >= 0) {
-    const chunkEnd = minDate([addDays(cur, maxDays - 1), last]);
-    out.push([format(cur, "yyyy-MM-dd"), format(chunkEnd, "yyyy-MM-dd")]);
-    cur = addDays(chunkEnd, 1);
-  }
-  return out;
+function validatePeriod(start: string, end: string) {
+  const error = rangeError({ start, end });
+  if (error) throw new DkError(400, error);
 }
 
 export async function fetchFinance(token: string, kind: "contas-recebidas" | "contas-pagas", start: string, end: string) {
-  const all: FinRecord[] = [];
-  for (const [a, b] of splitRange(start, end)) {
-    const r = await dk<{ registros: FinRecord[] }>(token, `/api/v1/financeiro/${kind}`, { data_inicial: a, data_final: b });
-    all.push(...(r.registros ?? []));
-  }
-  return all;
+  validatePeriod(start, end);
+  const r = await dk<{ registros: FinRecord[] }>(token, `/api/v1/financeiro/${kind}`, { data_inicial: start, data_final: end });
+  return r.registros ?? [];
 }
 
 /** Uses the API's event dates and totals, not the student's current status or registration date. */
 export async function fetchAcademicTotal(token: string, kind: "matriculas" | "cancelamentos", start: string, end: string) {
-  let total = 0;
-  for (const [a, b] of splitRange(start, end)) {
-    const r = await dk<{ total_matriculas?: number; total_cancelamentos?: number }>(token, `/api/v1/${kind}/periodo`, {
-      data_inicial: a,
-      data_final: b,
-    });
-    total += (kind === "matriculas" ? r.total_matriculas : r.total_cancelamentos) ?? 0;
-  }
-  return total;
+  validatePeriod(start, end);
+  const r = await dk<{ total_matriculas?: number; total_cancelamentos?: number }>(token, `/api/v1/${kind}/periodo`, {
+    data_inicial: start,
+    data_final: end,
+  });
+  return (kind === "matriculas" ? r.total_matriculas : r.total_cancelamentos) ?? 0;
 }
 
 export async function fetchAllAlunos(token: string, start = "2000-01-01", end = format(new Date(), "yyyy-MM-dd")) {

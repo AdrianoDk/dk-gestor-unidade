@@ -1,52 +1,43 @@
-import { format, startOfMonth, subDays, startOfYear, subMonths, endOfMonth } from "date-fns";
 import { AlertCircle, Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { defaultRange, rangeError, type Range } from "@/lib/dk-range";
 
-export type Range = { start: string; end: string };
-const f = (d: Date) => format(d, "yyyy-MM-dd");
-
-export const defaultRange = (): Range => ({ start: f(startOfMonth(new Date())), end: f(new Date()) });
-
-const presets: { label: string; get: () => Range }[] = [
-  { label: "Este mês", get: defaultRange },
-  {
-    label: "Mês passado",
-    get: () => {
-      const m = subMonths(new Date(), 1);
-      return { start: f(startOfMonth(m)), end: f(endOfMonth(m)) };
-    },
-  },
-  { label: "Últimos 90 dias", get: () => ({ start: f(subDays(new Date(), 89)), end: f(new Date()) }) },
-  { label: "Este ano", get: () => ({ start: f(startOfYear(new Date())), end: f(new Date()) }) },
-];
+export { defaultRange, type Range } from "@/lib/dk-range";
 
 export function DateFilter({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
+  const today = defaultRange();
+  const [period, setPeriod] = useState(value.start !== today.start || value.end !== today.end);
+  const [draft, setDraft] = useState(value);
+  const [submitted, setSubmitted] = useState(false);
+  useEffect(() => { setDraft(value); setSubmitted(false); }, [value.start, value.end]);
+  const error = rangeError(draft);
   return (
     <div className="rounded-xl border bg-card p-3 shadow-card sm:p-4">
       <div className="flex flex-wrap gap-2">
-        {presets.map((p) => {
-          const r = p.get();
-          const active = r.start === value.start && r.end === value.end;
-          return (
-            <Button key={p.label} size="sm" variant={active ? "default" : "secondary"} onClick={() => onChange(r)}>
-              {p.label}
-            </Button>
-          );
-        })}
+        <Button size="sm" variant={!period ? "default" : "secondary"} aria-pressed={!period} onClick={() => { setPeriod(false); setDraft(today); setSubmitted(false); onChange(today); }}>Hoje</Button>
+        <Button size="sm" variant={period ? "default" : "secondary"} aria-pressed={period} onClick={() => setPeriod(true)}>Período</Button>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:max-w-sm">
-        <label className="text-xs font-medium text-muted-foreground">
-          De
-          <Input type="date" value={value.start} max={value.end} onChange={(e) => e.target.value && onChange({ ...value, start: e.target.value })} className="mt-1" />
-        </label>
-        <label className="text-xs font-medium text-muted-foreground">
-          Até
-          <Input type="date" value={value.end} min={value.start} onChange={(e) => e.target.value && onChange({ ...value, end: e.target.value })} className="mt-1" />
-        </label>
-      </div>
+      {period && (
+        <form className="mt-3" noValidate onSubmit={(e) => { e.preventDefault(); setSubmitted(true); if (!error) onChange(draft); }}>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid w-full grid-cols-2 gap-3 sm:max-w-sm">
+              <label className="min-w-0 text-xs font-medium text-muted-foreground">
+                De
+                <Input type="date" value={draft.start} aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined} onChange={(e) => setDraft({ ...draft, start: e.target.value })} className="mt-1 min-w-0" />
+              </label>
+              <label className="min-w-0 text-xs font-medium text-muted-foreground">
+                Até
+                <Input type="date" value={draft.end} aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined} onChange={(e) => setDraft({ ...draft, end: e.target.value })} className="mt-1 min-w-0" />
+              </label>
+            </div>
+            <Button type="submit">Consultar</Button>
+          </div>
+          {error && (submitted || draft.start && draft.end) && <p id="period-error" role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
+        </form>
+      )}
     </div>
   );
 }
