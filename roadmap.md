@@ -6,6 +6,6 @@
 
 # Filtros da nova documentação
 
-- [ ] Conferir parâmetros de consulta na documentação enviada.
-- [ ] Oferecer apenas Hoje e Período e bloquear intervalos acima de 31 dias inclusivos.
-- [ ] Testar o limite e verificar a seleção de datas na tela.
+- [x] Conferir parâmetros de consulta na documentação enviada (mesmos parâmetros da versão anterior).
+- [x] Oferecer apenas Hoje e Período e bloquear intervalos acima de 31 dias inclusivos.
+- [x] Testar o limite (13 testes aprovados) e verificar o filtro isolado no computador e celular; consultas reais DKSOFT não verificadas sem token da unidade.
